@@ -291,24 +291,49 @@ trouble normalising evidence of negation.)
 
 Analogous to the function above, define a function to decide strict inequality:
 ```agda
-postulate
-  _<?_ : ∀ (m n : ℕ) → Dec (m < n)
+_<?_ : ∀ (m n : ℕ) → Dec (m < n)
 ```
 
 ```agda
--- Your code goes here
+¬z<z : ¬ (zero < zero)
+¬z<z ()
+
+¬s<z : ∀ {m : ℕ} → ¬ (suc m < zero)
+¬s<z ()
+
+¬s<s : ∀ {m n : ℕ} → ¬ (m < n) → ¬ (suc m < suc n)
+¬s<s ¬m<n (s<s m<n) = ¬m<n m<n
+
+zero <? zero = no ¬z<z
+zero <? suc n = yes z<s
+suc m <? zero = no ¬s<z
+suc m <? suc n with m <? n
+...       | yes m<n  = yes (s<s m<n)
+...       | no ¬m<n  = no (¬s<s ¬m<n)
 ```
 
 #### Exercise `_≡ℕ?_` (practice)
 
 Define a function to decide whether two naturals are equal:
 ```agda
-postulate
-  _≡ℕ?_ : ∀ (m n : ℕ) → Dec (m ≡ n)
+_≡ℕ?_ : ∀ (m n : ℕ) → Dec (m ≡ n)
 ```
 
 ```agda
--- Your code goes here
+pred : ∀ (n : ℕ) → ℕ
+pred zero    = zero
+pred (suc n) = n
+
+open Eq using (cong)
+suc-injective : ∀ { m n : ℕ} → suc m ≡ suc n → m ≡ n
+suc-injective sm≡sn = cong pred sm≡sn
+
+zero ≡ℕ? zero = yes refl
+zero ≡ℕ? (suc n) = no λ()
+suc m ≡ℕ? zero = no λ()
+suc m ≡ℕ? suc n with m ≡ℕ? n
+... | yes refl = yes refl
+... | no ¬m≡n = no λ{ sm≡sn → ¬m≡n (suc-injective sm≡sn) }
 ```
 
 
@@ -535,10 +560,22 @@ on which matches; but either is equally valid.
 
 Show that erasure relates corresponding boolean and decidable operations:
 ```agda
-postulate
-  ∧-× : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∧ ⌊ y ⌋ ≡ ⌊ x ×-dec y ⌋
-  ∨-⊎ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∨ ⌊ y ⌋ ≡ ⌊ x ⊎-dec y ⌋
-  not-¬ : ∀ {A : Set} (x : Dec A) → not ⌊ x ⌋ ≡ ⌊ ¬? x ⌋
+∧-× : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∧ ⌊ y ⌋ ≡ ⌊ x ×-dec y ⌋
+∧-× (yes x) (yes y) = refl
+∧-× (no ¬x) (no ¬y) = refl
+∧-× (yes x) (no ¬y) = refl
+∧-× (no ¬x) (yes y) = refl
+
+∨-⊎ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ ∨ ⌊ y ⌋ ≡ ⌊ x ⊎-dec y ⌋
+∨-⊎ (yes x) (yes y) = refl
+∨-⊎ (no ¬x) (no ¬y) = refl
+∨-⊎ (yes x) (no ¬y) = refl
+∨-⊎ (no ¬x) (yes y) = refl
+
+
+not-¬ : ∀ {A : Set} (x : Dec A) → not ⌊ x ⌋ ≡ ⌊ ¬? x ⌋
+not-¬ (yes x)  = refl
+not-¬ (no ¬x)  = refl
 ```
 
 #### Exercise `iff-erasure` (recommended)
@@ -547,8 +584,14 @@ Give analogues of the `_⇔_` operation from
 Chapter [Isomorphism](/Isomorphism/#iff),
 operation on booleans and decidables, and also show the corresponding erasure:
 ```agda
+_iff_ : Bool → Bool → Bool
+true iff true   = true
+false iff false = false
+_ iff _         = false
+
+
+
 postulate
-  _iff_ : Bool → Bool → Bool
   _⇔-dec_ : ∀ {A B : Set} → Dec A → Dec B → Dec (A ⇔ B)
   iff-⇔ : ∀ {A B : Set} (x : Dec A) (y : Dec B) → ⌊ x ⌋ iff ⌊ y ⌋ ≡ ⌊ x ⇔-dec y ⌋
 ```
@@ -630,6 +673,19 @@ True Q = T ⌊ Q ⌋
 Give analogues of `True`, `toWitness`, and `fromWitness` which work
 with *negated* properties. Call these `False`, `toWitnessFalse`, and
 `fromWitnessFalse`.
+
+```agda
+False : ∀ {Q} → Dec Q → Set
+False Q = T (not ⌊ Q ⌋)
+
+toWitnessFalse : ∀ {A : Set} {D : Dec A} → T ⌊ ¬? D ⌋ → ¬ A
+toWitnessFalse {A} {yes x} ()
+toWitnessFalse {A} {no ¬x} tt = ¬x
+
+fromWitnessFalse : ∀ {A : Set} {D : Dec A} → ¬ A → T ⌊ ¬? D ⌋
+fromWitnessFalse {A} {yes x} ¬x = ¬x x
+fromWitnessFalse {A} {no ¬x} _  = tt
+```
 
 
 #### Exercise `Bin-decidable` (stretch)

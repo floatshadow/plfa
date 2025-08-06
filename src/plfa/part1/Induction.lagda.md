@@ -24,7 +24,7 @@ and some operations upon them.  We also require a couple of new operations,
 `cong`, `sym`, `_≡⟨⟩_` and `_≡⟨_⟩_`, which are explained below:
 ```agda
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; cong; sym)
+open Eq using (_≡_; _≢_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; step-≡-∣; step-≡-⟩; _∎)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 ```
@@ -718,7 +718,26 @@ first four days using a finite story of creation, as
 [earlier](/Naturals/#finite-creation).
 
 ```agda
--- Your code goes here
+-- In the beginning, we know nothing.
+
+-- On the first day, we know zero.
+-- 0 : ℕ
+
+-- On the second day, we know one and all the associativity rule containing zero.
+-- 1 : ℕ
+-- (0 + 0) + 0 ≡ 0 + (0 + 0)
+
+-- On the third day, we know two and all the associativity rules containing one.
+-- 2 : ℕ
+-- (1 + 0) + 0 ≡ 1 + (0 + 0)
+-- (1 + 1) + 0 ≡ 1 + (1 + 0)
+-- (0 + 1) + 0 ≡ 0 + (1 + 0)
+-- (0 + 1) + 1 ≡ 0 + (1 + 1)
+-- (1 + 1) + 0 ≡ 1 + (1 + 0)
+-- (1 + 1) + 1 ≡ 1 + (1 + 1)
+
+-- On the fourth day, we know three and all the associativity rules containing two.
+-- ...
 ```
 
 ## Associativity with rewrite
@@ -890,7 +909,8 @@ just apply the previous results which show addition
 is associative and commutative.
 
 ```agda
--- Your code goes here
++-swap : ∀ (m n p : ℕ) → m + (n + p) ≡ n + (m + p)
++-swap m n p rewrite sym (+-assoc m n p) | +-comm m n | +-assoc n m p = refl
 ```
 
 
@@ -903,7 +923,9 @@ Show multiplication distributes over addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+*-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ m * p + n * p
+*-distrib-+ zero n p = refl
+*-distrib-+ (suc m) n p rewrite *-distrib-+ m n p | +-assoc p (m * p) (n * p) = refl
 ```
 
 
@@ -916,7 +938,9 @@ Show multiplication is associative, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+*-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
+*-assoc zero n p = refl
+*-assoc (suc m) n p rewrite *-distrib-+ n (m * n) p | *-assoc m n p = refl
 ```
 
 
@@ -930,7 +954,17 @@ for all naturals `m` and `n`.  As with commutativity of addition,
 you will need to formulate and prove suitable lemmas.
 
 ```agda
--- Your code goes here
+*-identityʳ : ∀ (n : ℕ) → n * zero ≡ zero
+*-identityʳ zero = refl
+*-identityʳ (suc n) rewrite *-identityʳ n  = refl  
+
+*-suc : ∀ (n m : ℕ) → n * suc m ≡ n + n * m
+*-suc zero m = refl
+*-suc (suc n) m rewrite *-suc n m | +-swap m n (n * m) = refl
+
+*-comm : ∀ (m n : ℕ) → m * n ≡ n * m
+*-comm zero n rewrite *-identityʳ n = refl
+*-comm (suc m) n rewrite *-suc n m | *-comm m n = refl
 ```
 
 
@@ -943,7 +977,9 @@ Show
 for all naturals `n`. Did your proof require induction?
 
 ```agda
--- Your code goes here
+0∸n≡0 : ∀ (n : ℕ) → zero ∸ n ≡ zero
+0∸n≡0 zero = refl
+0∸n≡0 (suc n) = refl 
 ```
 
 
@@ -956,7 +992,10 @@ Show that monus associates with addition, that is,
 for all naturals `m`, `n`, and `p`.
 
 ```agda
--- Your code goes here
+∸-+-assoc : ∀ (m n p : ℕ) → m ∸ n ∸ p ≡ m ∸ (n + p)
+∸-+-assoc zero n p rewrite 0∸n≡0 n | 0∸n≡0 p | 0∸n≡0 (n + p) = refl
+∸-+-assoc (suc m) zero p = refl
+∸-+-assoc (suc m) (suc n) p = ∸-+-assoc m n p
 ```
 
 
@@ -971,7 +1010,13 @@ Show the following three laws
 for all `m`, `n`, and `p`.
 
 ```
--- Your code goes here
+^-distribˡ-+-* : ∀ (m n p : ℕ) → m ^ (n + p) ≡ (m ^ n) * (m ^ p)
+^-distribˡ-+-* m zero p rewrite +-identityʳ (m ^ p) = refl
+^-distribˡ-+-* m (suc n) p rewrite ^-distribˡ-+-* m n p | *-assoc m (m ^ n) (m ^ p) = refl
+
+^-distribʳ-* : ∀ (m n p : ℕ) → (m * n) ^ p ≡ (m ^ p) * (n ^ p)
+^-distribʳ-* m n zero = refl
+^-distribʳ-* m n (suc p) rewrite ^-distribʳ-* m n p | *-assoc m n (m ^ p * n ^ p) | sym (*-assoc n (m ^ p) (n ^ p)) | *-comm n (m ^ p) | *-assoc m (m ^ p) (n * n ^ p) | *-assoc (m ^ p) n (n ^ p)= refl
 ```
 
 
@@ -996,7 +1041,36 @@ over bitstrings:
 For each law: if it holds, prove; if not, give a counterexample.
 
 ```agda
--- Your code goes here
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (b O) = b I
+inc (b I) = inc (b) O
+
+to : ℕ → Bin
+to zero = ⟨⟩ O
+to (suc n) = inc (to n)
+
+from : Bin → ℕ
+from ⟨⟩ = 0
+from (b O) = from (b) * 2
+from (b I) = 1 + (from (b) * 2)
+
+
+from-inc : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
+from-inc ⟨⟩ = refl
+from-inc (b O) = refl
+from-inc (b I) rewrite from-inc b = refl
+
+to-from-counterexample = to (from (⟨⟩)) ≢ ⟨⟩
+
+from-to : ∀ (n : ℕ) → from (to n) ≡ n
+from-to zero = refl
+from-to (suc n) rewrite from-inc (to n) | from-to n = refl
 ```
 
 

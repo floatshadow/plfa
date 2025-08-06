@@ -191,7 +191,21 @@ Using negation, show that
 is irreflexive, that is, `n < n` holds for no `n`.
 
 ```agda
--- Your code goes here
+infix 4 _<_
+
+data _<_ : ℕ → ℕ → Set where
+
+  z<s : ∀ {n : ℕ}
+      ------------
+    → zero < suc n
+
+  s<s : ∀ {m n : ℕ}
+    → m < n
+      -------------
+    → suc m < suc n
+
+<-irreflexive : ∀ {n : ℕ} → ¬ (n < n)
+<-irreflexive (s<s m<n) = <-irreflexive m<n
 ```
 
 
@@ -209,7 +223,43 @@ Here "exactly one" means that not only one of the three must hold,
 but that when one holds the negation of the other two must also hold.
 
 ```agda
--- Your code goes here
+infix 4 _≮_
+
+_≮_ : ℕ → ℕ → Set
+m ≮ n = ¬ (m < n)
+
+s≮s : ∀ {m n : ℕ}
+  → m ≮ n
+  → (suc m) ≮ (suc n)
+s≮s m≮n (s<s m<n) = m≮n m<n
+
+s≢s : ∀ {m n : ℕ}
+  → m ≢ n
+  → (suc m) ≢ (suc n)
+s≢s m≢n sm≡sn = m≢n (sm≡sn→m≡n sm≡sn)
+  where
+  sm≡sn→m≡n : ∀ {m n : ℕ} 
+    → (suc m) ≡ (suc n)
+    → m ≡ n
+  sm≡sn→m≡n refl = refl
+
+cong : ∀ {A B : Set} (f : A → B) {x y : A}
+  → x ≡ y
+    ---------
+  → f x ≡ f y
+cong f refl  =  refl
+
+trichotomy : ∀ (m n : ℕ) →
+  (m < n × m ≢ n × n ≮ m) ⊎
+  (m ≡ n × m ≮ n × n ≮ m) ⊎
+  (n < m × m ≢ n × m ≮ n)
+trichotomy zero zero = inj₂ ( inj₁ ⟨ refl , ⟨ (λ()) , (λ()) ⟩ ⟩ )
+trichotomy zero (suc n) = inj₁ ⟨ z<s , ⟨ (λ()) , (λ()) ⟩ ⟩
+trichotomy (suc m) zero = inj₂ ( inj₂ ⟨ z<s , ⟨ (λ()) , (λ()) ⟩ ⟩ )
+trichotomy (suc m) (suc n) with trichotomy m n
+...                        | inj₁ ⟨ m<n , ⟨ m≢n , n≮m ⟩ ⟩ = inj₁ ⟨ s<s m<n , ⟨ s≢s m≢n , s≮s n≮m ⟩ ⟩
+...                        | inj₂ ( inj₁ ⟨ m≡n , ⟨ m≮n , n≮m ⟩ ⟩ ) = inj₂ (inj₁ ⟨ cong suc m≡n , ⟨ s≮s m≮n , s≮s n≮m ⟩ ⟩)  
+...                        | inj₂ ( inj₂ ⟨ n<m , ⟨ m≢n , m≮n ⟩ ⟩ ) = inj₂ (inj₂ ⟨ s<s n<m , ⟨ s≢s m≢n , s≮s m≮n ⟩ ⟩)
 ```
 
 #### Exercise `⊎-dual-×` (recommended)
@@ -222,7 +272,15 @@ version of De Morgan's Law.
 This result is an easy consequence of something we've proved previously.
 
 ```agda
--- Your code goes here
+⊎-dual-× : ∀ { A B : Set }
+  → ¬ (A ⊎ B) ≃ (¬ A) × (¬ B)
+⊎-dual-× =
+  record
+    { to   = λ{ ¬a⊎b → ⟨ (λ{ ¬a → ¬a⊎b (inj₁ ¬a) }) , (λ{ ¬b → ¬a⊎b (inj₂ ¬b) }) ⟩ }
+    ; from = λ{ ⟨ ¬a , ¬b ⟩ → (λ{ (inj₁ a) → ¬a a ; (inj₂ b) → ¬b b }) }
+    ; from∘to = λ{ ¬a⊎b →  extensionality λ{ (inj₁ a) → refl ; (inj₂ b) → refl } }
+    ; to∘from = λ{ _ → refl }
+    }
 ```
 
 
@@ -233,6 +291,25 @@ Do we also have the following?
 If so, prove; if not, can you give a relation weaker than
 isomorphism that relates the two sides?
 
+```agda
+-- The relation does not hold, left hand side is `(A × B) → ⊥`,
+-- right hand side is `A → ⊥ ⊎ B → ⊥`.
+-- A function from the proof to `(A × B) → ⊥` does not imply
+-- the proof to `A` or `B` itself leads to `⊥`.
+
+infix 0 _≲_
+record _≲_ (A B : Set) : Set where
+  field
+    to      : A → B
+    from    : B → A
+    from∘to : ∀ (x : A) → from (to x) ≡ x
+open _≲_
+
+⊎-implies-× : ∀ { A B : Set }
+  → (¬ A) ⊎ (¬ B) → ¬ (A × B)
+⊎-implies-× (inj₁ ¬a) a×b = ¬a (proj₁ a×b)  
+⊎-implies-× (inj₂ ¬b) a×b = ¬b (proj₂ a×b)  
+```
 
 ## Intuitive and Classical logic
 
@@ -379,7 +456,47 @@ Consider the following principles:
 Show that each of these implies all the others.
 
 ```agda
--- Your code goes here
+-- We start from admitted Excluded Middle
+em→dne : (∀ {A : Set}
+  → (A ⊎ ¬ A))
+    -----
+  → (∀ {A : Set}
+  → ¬ ¬ A → A)
+em→dne a⊎¬a ¬¬a with a⊎¬a
+... | inj₁ a = a
+... | inj₂ ¬a = ⊥-elim (¬¬a ¬a)
+
+dne→peirce : (∀ { A : Set }
+  → (¬ ¬ A → A))
+    ----
+  → (∀ { A B : Set }
+  → ((A → B) → A) → A)
+dne→peirce ¬¬a→a a→b-→a = ¬¬a→a λ{ ¬a → ¬a (a→b-→a λ{ a → ⊥-elim (¬a a) } ) }
+
+-- perice shows (((¬ A ⊎ B) → ⊥) → (¬ A ⊎ B)) → (¬ A ⊎ B) 
+peirce→iad : (∀ { A B : Set }
+  → (((A → B) → A) → A))
+    ----
+  → (∀ { A B : Set }
+  → (A → B) → ¬ A ⊎ B)
+peirce→iad peirce a→b = peirce λ{ ¬-¬a⊎b → inj₁ λ{ a → ¬-¬a⊎b (inj₂ (a→b a)) } }
+
+iad→demorgan : (∀ { A B : Set }
+  → ((A → B) → ¬ A ⊎ B))
+    -----
+  → (∀ { A B : Set }
+  → ¬ (¬ A × ¬ B) → A ⊎ B)
+iad→demorgan iad {A} {B} ¬-¬a×¬b with iad {A} {A} (λ{ a → a }) | iad {B} {B} (λ{ b → b })
+... | inj₁ ¬a  | inj₁ ¬b = ⊥-elim (¬-¬a×¬b ⟨ ¬a , ¬b ⟩) 
+... | inj₁ ¬a  | inj₂ b = inj₂ b
+... | inj₂ a   | _ = inj₁ a
+
+demorgan→em : (∀ { A B : Set }
+  → ¬ (¬ A × ¬ B) → A ⊎ B)
+    -----
+  → (∀ { A : Set }
+  → (A ⊎ ¬ A))
+demorgan→em demorgan = demorgan λ{ ⟨ ¬a , ¬¬a ⟩ → ¬¬a ¬a }
 ```
 
 
@@ -394,7 +511,14 @@ Show that any negated formula is stable, and that the conjunction
 of two stable formulas is stable.
 
 ```agda
--- Your code goes here
+¬a-stable : ∀ {A : Set} → Stable (¬ A)
+¬a-stable = ¬¬¬-elim
+
+a×b-stable : ∀ { A B : Set } → Stable A → Stable B → Stable (A × B)
+a×b-stable a-s b-s = λ{ ¬¬-a×b → 
+  ⟨ (a-s λ{ ¬a → ¬¬-a×b λ{ a×b → ¬a (proj₁ a×b)} })
+  , (b-s λ{ ¬b → ¬¬-a×b λ{ a×b → ¬b (proj₂ a×b)} }) 
+  ⟩ }   
 ```
 
 ## Standard library
