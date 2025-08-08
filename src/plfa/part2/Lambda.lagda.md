@@ -53,12 +53,12 @@ four.
 open import Data.Bool.Base using (Bool; true; false; T; not)
 open import Data.List.Base using (List; _∷_; [])
 open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.Product.Base using (∃-syntax; _×_)
+open import Data.Product.Base using (∃-syntax; _×_; _,_)
 open import Data.String using (String; _≟_)
 open import Data.Unit.Base using (tt)
 open import Relation.Nullary.Negation using (¬_; contradiction)
 open import Relation.Nullary.Decidable using (Dec; yes; no; False; toWitnessFalse; ¬?)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong)
 ```
 
 ## Syntax of terms
@@ -191,7 +191,11 @@ two natural numbers.  Your definition may use `plus` as
 defined earlier.
 
 ```agda
--- Your code goes here
+mul : Term
+mul = μ "*" ⇒ ƛ "m" ⇒ ƛ "n" ⇒
+        case ` "m"
+          [zero⇒ `zero
+          |suc "m"⇒ ` "plus" · ` "n" · (` "*" · ` "m" · ` "n") ]
 ```
 
 
@@ -203,7 +207,15 @@ definition may use `plusᶜ` as defined earlier (or may not
 — there are nice definitions both ways).
 
 ```agda
--- Your code goes here
+zeroᶜ : Term
+zeroᶜ = ƛ "s" ⇒ ƛ "z" ⇒ ` "z"
+
+threeᶜ : Term
+threeᶜ = ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · (` "s" · (` "s" · ` "z"))
+
+mulᶜ : Term
+mulᶜ = ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒
+        ` "m" · (` "n" · ` "s") · ` "z"
 ```
 
 
@@ -245,6 +257,12 @@ when term `t` is anything but a variable.
 
 The definition of `plus` can now be written as follows:
 ```agda
+-- plus : Term
+-- plus = μ "+" ⇒ ƛ "m" ⇒ ƛ "n" ⇒
+--          case ` "m"
+--            [zero⇒ ` "n"
+--            |suc "m" ⇒ `suc (` "+" · ` "m" · ` "n") ]
+
 plus′ : Term
 plus′ = μ′ + ⇒ ƛ′ m ⇒ ƛ′ n ⇒
           case′ m
@@ -256,7 +274,17 @@ plus′ = μ′ + ⇒ ƛ′ m ⇒ ƛ′ n ⇒
   n  =  ` "n"
 ```
 Write out the definition of multiplication in the same style.
-
+```agda
+mul' : Term
+mul' = μ′ × ⇒ ƛ′ m ⇒ ƛ′ n ⇒
+         case′ m
+           [zero⇒ `zero
+           |suc m ⇒ plus′ · n · (× · m · n) ]
+  where
+  ×  =  ` "*"
+  m  =  ` "m"
+  n  =  ` "n"
+```
 
 ### Formal vs informal
 
@@ -527,6 +555,23 @@ What is the result of the following substitution?
 3. `` (ƛ "y" ⇒ `zero · (ƛ "x" ⇒ ` "x")) ``
 4. `` (ƛ "y" ⇒ `zero · (ƛ "x" ⇒ `zero)) ``
 
+```agda
+_ : (ƛ "y" ⇒ ` "x" · (ƛ "x" ⇒ ` "x")) [ "x" := `zero ]
+      ≡ ƛ "y" ⇒ `zero · (ƛ "x" ⇒ ` "x")
+_ = refl
+
+_ : (ƛ "y" ⇒ ` "x" · (ƛ "x" ⇒ `zero)) [ "x" := `zero ]
+      ≡ ƛ "y" ⇒ `zero · (ƛ "x" ⇒ `zero)
+_ = refl
+
+_ : (ƛ "y" ⇒ `zero · (ƛ "x" ⇒ ` "x")) [ "x" := `zero ]
+      ≡ ƛ "y" ⇒ `zero · (ƛ "x" ⇒ ` "x")
+_ = refl
+
+_ : (ƛ "y" ⇒ `zero · (ƛ "x" ⇒ `zero)) [ "x" := `zero ]
+      ≡ ƛ "y" ⇒ `zero · (ƛ "x" ⇒ `zero)
+_ = refl
+```
 
 #### Exercise `_[_:=_]′` (stretch)
 
@@ -537,7 +582,26 @@ clauses into a single function, defined by mutual recursion with
 substitution.
 
 ```agda
--- Your code goes here
+infix 9 _[_:=_]′
+
+
+_[_≟_:=_]′′ : Term → Id → Id → Term → Term
+_[_:=_]′ : Term → Id → Term → Term
+
+N [ x ≟ y := V ]′′ with x ≟ y
+... | yes _         = N
+... | no  _         = N [ y := V ]′
+
+(` x) [ y := V ]′ with x ≟ y
+... | yes _         = V
+... | no  _         = ` x
+(ƛ x ⇒ N) [ y := V ]′ = ƛ x ⇒ N [ x ≟ y := V ]′′
+(L · M) [ y := V ]′  = L [ y := V ]′ · M [ y := V ]′
+(`zero) [ y := V ]′  = `zero
+(`suc M) [ y := V ]′ = `suc M [ y := V ]′
+(case L [zero⇒ M |suc x ⇒ N ]) [ y := V ]′
+  = case L [ y := V ]′ [zero⇒ M [ y := V ]′ |suc x ⇒ N [ x ≟ y := V ]′′ ]
+(μ x ⇒ N) [ y := V ]′ = μ x ⇒ N [ x ≟ y := V ]′′
 ```
 
 
@@ -1028,6 +1092,9 @@ infixl 5  _,_⦂_
 data Context : Set where
   ∅     : Context
   _,_⦂_ : Context → Id → Type → Context
+
+_ : Context
+_ = ∅ , "s" ⦂ `ℕ ⇒ `ℕ , "z" ⦂ `ℕ
 ```
 
 
@@ -1043,7 +1110,31 @@ to the list
     [ ⟨ "z" , `ℕ ⟩ , ⟨ "s" , `ℕ ⇒ `ℕ ⟩ ]
 
 ```agda
--- Your code goes here
+open import plfa.part1.Isomorphism using (_≃_)
+
+Context-≃ : Context ≃ List (Id × Type)
+Context-≃ = record
+  { to      = to
+  ; from    = from
+  ; from∘to = from∘to
+  ; to∘from = to∘from
+  }
+  where
+  to : Context → List (Id × Type)
+  to ∅ = []
+  to (Γ , x ⦂ A) = (x , A) ∷ to Γ
+
+  from : List (Id × Type) → Context
+  from [] = ∅
+  from ((x , A) ∷ xs) = from xs , x ⦂ A
+
+  from∘to : ∀ (Γ : Context) → from (to Γ) ≡ Γ
+  from∘to ∅ = refl
+  from∘to (Γ , x ⦂ A) = cong (_, x ⦂ A) (from∘to Γ)
+
+  to∘from : ∀ (xs : List (Id × Type)) → to (from xs) ≡ xs
+  to∘from [] = refl
+  to∘from ((x , A) ∷ xs) = cong ((x , A) ∷_) (to∘from xs)
 ```
 
 ### Lookup judgment
@@ -1113,6 +1204,9 @@ S′ : ∀ {Γ x y A B}
    → Γ , y ⦂ B ∋ x ⦂ A
 
 S′ {x≢y = x≢y} x = S (toWitnessFalse x≢y) x
+
+_ : ∅ , "x" ⦂ `ℕ ⇒ `ℕ , "y" ⦂ `ℕ , "z" ⦂ `ℕ ∋ "x" ⦂ `ℕ ⇒ `ℕ
+_ = S′ (S′ Z)
 ```
 
 ### Typing judgment
@@ -1239,6 +1333,7 @@ Here is the above typing derivation formalised in Agda:
 Ch : Type → Type
 Ch A = (A ⇒ A) ⇒ A ⇒ A
 
+-- Γ ⊢ ƛ "s" ⇒ ƛ "z" ⇒ ` "s" · (` "s" · ` "z") ⦂ (A ⇒ A) ⇒ A ⇒ A
 ⊢twoᶜ : ∀ {Γ A} → Γ ⊢ twoᶜ ⦂ Ch A
 ⊢twoᶜ = ⊢ƛ (⊢ƛ (⊢` ∋s · (⊢` ∋s · ⊢` ∋z)))
   where
@@ -1251,6 +1346,10 @@ Here are the typings corresponding to computing two plus two:
 ⊢two : ∀ {Γ} → Γ ⊢ two ⦂ `ℕ
 ⊢two = ⊢suc (⊢suc ⊢zero)
 
+-- plus = μ "+" ⇒ ƛ "m" ⇒ ƛ "n" ⇒
+--          case ` "m"
+--            [zero⇒ ` "n"
+--            |suc "m" ⇒ `suc (` "+" · ` "m" · ` "n") ]
 ⊢plus : ∀ {Γ} → Γ ⊢ plus ⦂ `ℕ ⇒ `ℕ ⇒ `ℕ
 ⊢plus = ⊢μ (⊢ƛ (⊢ƛ (⊢case (⊢` ∋m) (⊢` ∋n)
          (⊢suc (⊢` ∋+ · ⊢` ∋m′ · ⊢` ∋n′)))))
@@ -1386,12 +1485,48 @@ or explain why there is no such `A`.
 2. `` ∅ , "y" ⦂ `ℕ ⇒ `ℕ , "x" ⦂ `ℕ ⊢ ` "x" · ` "y" ⦂ A ``
 3. `` ∅ , "y" ⦂ `ℕ ⇒ `ℕ ⊢ ƛ "x" ⇒ ` "y" · ` "x" ⦂ A ``
 
+```agda
+derivable₁ : ∅ , "y" ⦂ `ℕ ⇒ `ℕ , "x" ⦂ `ℕ ⊢ ` "y" · ` "x" ⦂ `ℕ
+derivable₁ = (⊢` ∋y) · ⊢` ∋x
+  where
+  ∋y = S′ Z
+  ∋x = Z
+
+¬derivable₂ : ∀ {A} → ¬ (∅ , "y" ⦂ `ℕ ⇒ `ℕ , "x" ⦂ `ℕ ⊢ ` "x" · ` "y" ⦂ A)
+¬derivable₂ (⊢` ∋x · ⊢` ∋y) with ∋-functional ∋y ∋y′ | ∋-functional ∋x ∋x′
+  where
+  ∋y′ = S′ Z
+  ∋x′ = Z
+... | A₁≡`ℕ⇒`ℕ  | A₁⇒A≡`ℕ = (impossible A₁≡`ℕ⇒`ℕ) A₁⇒A≡`ℕ
+  where
+  impossible : ∀ {A A₁} → (A₁ ≡ `ℕ ⇒ `ℕ) → ¬ (A₁ ⇒ A ≡ `ℕ)
+  impossible refl ()
+
+derivable₃ : ∅ , "y" ⦂ `ℕ ⇒ `ℕ , "x" ⦂ `ℕ ⊢ ƛ "x" ⇒ ` "y" · ` "x" ⦂ `ℕ ⇒ `ℕ
+derivable₃ = ⊢ƛ ((⊢` (∋y)) · (⊢` ∋x))
+  where
+  ∋y = S′ (S′ Z)
+  ∋x = Z
+```
+
 For each of the following, give types `A`, `B`, and `C` for which it is derivable,
 or explain why there are no such types.
 
 1. `` ∅ , "x" ⦂ A ⊢ ` "x" · ` "x" ⦂ B ``
 2. `` ∅ , "x" ⦂ A , "y" ⦂ B ⊢ ƛ "z" ⇒ ` "x" · (` "y" · ` "z") ⦂ C ``
 
+```agda
+derivable′₁ : ∀ {A B} → ¬ (∅ , "x" ⦂ A ⊢ ` "x" · ` "x" ⦂ B)
+derivable′₁ (⊢` ∋x · ⊢` ∋x′) with ∋-functional ∋x Z | ∋-functional ∋x′ Z
+...                             | refl              | ()
+
+derivable′₂ : ∅ , "x" ⦂ `ℕ ⇒ `ℕ , "y" ⦂ `ℕ ⇒ `ℕ ⊢ ƛ "z" ⇒ ` "x" · (` "y" · ` "z") ⦂ `ℕ ⇒ `ℕ
+derivable′₂ = ⊢ƛ (⊢` ∋x · (⊢` ∋y · ⊢` ∋z))
+  where
+  ∋x = S′ (S′ Z)
+  ∋y = S′ Z
+  ∋z = Z
+```
 
 #### Exercise `⊢mul` (recommended)
 
@@ -1399,7 +1534,15 @@ Using the term `mul` you defined earlier, write out the derivation
 showing that it is well typed.
 
 ```agda
--- Your code goes here
+⊢mul : ∅ , "plus" ⦂ `ℕ ⇒ `ℕ ⇒ `ℕ ⊢ mul ⦂ `ℕ ⇒ `ℕ ⇒ `ℕ
+⊢mul = ⊢μ (⊢ƛ (⊢ƛ (⊢case (⊢` ∋m) (⊢zero)
+         (⊢` ∋plus · ⊢` ∋n · (⊢` ∋* · ⊢` ∋m′ · ⊢` ∋n)))))
+  where
+  ∋m  = S′ Z
+  ∋m′ = Z
+  ∋n  = S′ Z
+  ∋* = S′ (S′ (S′ Z))
+  ∋plus = S′ (S′ (S′ (S′ Z)))
 ```
 
 
@@ -1409,7 +1552,13 @@ Using the term `mulᶜ` you defined earlier, write out the derivation
 showing that it is well typed.
 
 ```agda
--- Your code goes here
+⊢mulᶜ : ∅ ⊢ mulᶜ ⦂ Ch `ℕ ⇒ Ch `ℕ ⇒ Ch `ℕ
+⊢mulᶜ = ⊢ƛ (⊢ƛ (⊢ƛ (⊢ƛ (⊢` ∋m · (⊢` ∋n · ⊢` ∋s) · ⊢` ∋z))))
+  where
+  ∋m  = S′ (S′ (S′ Z))
+  ∋n  = S′ (S′ Z)
+  ∋s  = S′ Z
+  ∋z  = Z
 ```
 
 
