@@ -20,7 +20,7 @@ distributivity.
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; cong-app)
 open Eq.≡-Reasoning
-open import Data.Nat.Base using (ℕ; zero; suc; _+_)
+open import Data.Nat.Base using (ℕ; zero; suc; _+_; _*_)
 open import Data.Nat.Properties using (+-comm)
 ```
 
@@ -437,15 +437,16 @@ open ≲-Reasoning
 
 Show that every isomorphism implies an embedding.
 ```agda
-postulate
-  ≃-implies-≲ : ∀ {A B : Set}
-    → A ≃ B
-      -----
-    → A ≲ B
-```
-
-```agda
--- Your code goes here
+≃-implies-≲ : ∀ {A B : Set}
+  → A ≃ B
+    -----
+  → A ≲ B
+≃-implies-≲ A≃B =
+  record
+    { to      = to   A≃B
+    ; from    = from A≃B
+    ; from∘to = from∘to A≃B
+    }
 ```
 
 #### Exercise `_⇔_` (practice) {#iff}
@@ -456,11 +457,40 @@ record _⇔_ (A B : Set) : Set where
   field
     to   : A → B
     from : B → A
+open _⇔_
 ```
 Show that equivalence is reflexive, symmetric, and transitive.
 
 ```agda
--- Your code goes here
+⇔-refl : ∀ {A : Set}
+  -------
+  → A ⇔ A
+⇔-refl =
+  record
+    { to = λ{x → x}
+    ; from = λ{y → y}
+    }
+
+⇔-sym : ∀ {A B : Set}
+  → A ⇔ B
+    -----
+  → B ⇔ A
+⇔-sym A⇔B =
+  record
+    { to = from A⇔B
+    ; from = to A⇔B
+    }
+  
+⇔-trans : ∀ {A B C : Set}
+  → A ⇔ B
+  → B ⇔ C
+    -----
+  → A ⇔ C
+⇔-trans A⇔B B⇔C =
+  record
+    { to = to B⇔C ∘ to A⇔B
+    ; from = from A⇔B ∘ from B⇔C
+    }
 ```
 
 #### Exercise `Bin-embedding` (stretch) {#Bin-embedding}
@@ -480,10 +510,48 @@ which satisfy the following property:
 
 Using the above, establish that there is an embedding of `ℕ` into `Bin`.
 ```agda
--- Your code goes here
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+
+
+ℕ-≲-Bin : ℕ ≲ Bin
+ℕ-≲-Bin =
+  record
+    { to      = Bin/to
+    ; from    = Bin/from
+    ; from∘to = Bin/from∘to
+    }
+    where
+    inc : Bin → Bin
+    inc ⟨⟩ = ⟨⟩ I
+    inc (b O) = b I
+    inc (b I) = inc (b) O
+
+    Bin/to : ℕ → Bin
+    Bin/to zero = ⟨⟩ O
+    Bin/to (suc n) = inc (Bin/to n)
+
+    Bin/from : Bin → ℕ
+    Bin/from ⟨⟩ = 0
+    Bin/from (b O) = Bin/from (b) * 2
+    Bin/from (b I) = suc (Bin/from (b) * 2)
+
+    Bin/from-inc : ∀ (b : Bin) → Bin/from (inc b) ≡ suc (Bin/from b)
+    Bin/from-inc ⟨⟩ = refl
+    Bin/from-inc (b O) = refl
+    Bin/from-inc (b I) rewrite Bin/from-inc b = refl
+
+    Bin/from∘to : ∀ (n : ℕ) → Bin/from (Bin/to n) ≡ n
+    Bin/from∘to zero = refl
+    Bin/from∘to (suc n) rewrite Bin/from-inc (Bin/to n) | Bin/from∘to n = refl
 ```
 
 Why do `to` and `from` not form an isomorphism?
+```
+-- Bin/from is not a monomorphism, since 0 has two representations: `⟨⟩` and `⟨⟩ O`.
+```
 
 ## Standard library
 
