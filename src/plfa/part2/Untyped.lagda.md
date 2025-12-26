@@ -47,7 +47,7 @@ the range of different lambda calculi one may encounter.
 
 ```agda
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl)
+open Eq using (_≡_; refl; cong)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤?_; z≤n; s≤s)
 open import Relation.Nullary.Negation using (¬_)
 open import Relation.Nullary.Decidable using (True; toWitness)
@@ -94,7 +94,16 @@ data Type : Set where
 Show that `Type` is isomorphic to `⊤`, the unit type.
 
 ```agda
--- Your code goes here
+open import plfa.part1.Isomorphism using (_≃_)
+open import plfa.part1.Connectives using (⊤; tt)
+
+Type≃⊤ : Type ≃ ⊤
+Type≃⊤ = record
+  { to   = λ{ ★ → tt }
+  ; from = λ{ tt → ★ }
+  ; from∘to = λ{ ★ → refl }
+  ; to∘from = λ{ tt → refl }
+  }
 ```
 
 ## Contexts
@@ -113,7 +122,29 @@ We let `Γ` and `Δ` range over contexts.
 Show that `Context` is isomorphic to `ℕ`.
 
 ```agda
--- Your code goes here
+Context≃ℕ : Context ≃ ℕ
+Context≃ℕ = record
+  { to   = to
+  ; from = from
+  ; from∘to = from∘to
+  ; to∘from = to∘from
+  }
+  where
+  to : Context → ℕ
+  to ∅       = zero
+  to (Γ , A) = suc (to Γ)
+
+  from : ℕ → Context
+  from zero    = ∅
+  from (suc n) = from n , ★
+
+  from∘to : ∀ (Γ) → from (to Γ) ≡ Γ
+  from∘to ∅       = refl
+  from∘to (Γ , ★) = cong (_, ★) (from∘to Γ)
+
+  to∘from : ∀ (n) → to (from n) ≡ n
+  to∘from zero    = refl
+  to∘from (suc n) = cong (suc) (to∘from n)
 ```
 
 ## Variables and the lookup judgment

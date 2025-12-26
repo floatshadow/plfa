@@ -243,13 +243,13 @@ partial order but not a total order.
 Give an example of a preorder that is not a partial order.
 
 ```agda
--- Your code goes here
+-- (s, t) if in a directed graph, there is a path from s to t
 ```
 
 Give an example of a partial order that is not a total order.
 
 ```agda
--- Your code goes here
+-- subset relation
 ```
 
 ## Reflexivity
@@ -362,7 +362,8 @@ The above proof omits cases where one argument is `z≤n` and one
 argument is `s≤s`.  Why is it ok to omit them?
 
 ```agda
--- Your code goes here
+-- If the first argument is z≤n, then the second argument must be
+-- of the form z≤n (s≤s form is impossible as m is zero).
 ```
 
 
@@ -552,7 +553,25 @@ transitivity proves `m + p ≤ n + q`, as was to be shown.
 Show that multiplication is monotonic with regard to inequality.
 
 ```agda
--- Your code goes here
+*-monoʳ-≤ : ∀ (n p q : ℕ)
+  → p ≤ q
+    -------------
+  → n * p ≤ n * q
+*-monoʳ-≤ zero p q p≤q = z≤n
+*-monoʳ-≤ (suc n) p q p≤q = +-mono-≤ p q (n * p) (n * q) p≤q (*-monoʳ-≤ n p q p≤q)
+
+*-monoˡ-≤ : ∀ (m n p : ℕ)
+  → m ≤ n
+    -------------
+  → m * p ≤ n * p
+*-monoˡ-≤ m n p m≤n rewrite *-comm m p | *-comm n p = *-monoʳ-≤ p m n m≤n
+
+*-mono-≤ : ∀ (m n p q : ℕ)
+  → m ≤ n
+  → p ≤ q
+    -------------
+  → m * p ≤ n * q
+*-mono-≤ m n p q m≤n p≤q = ≤-trans (*-monoˡ-≤ m n p m≤n) (*-monoʳ-≤ n p q p≤q)
 ```
 
 
@@ -600,7 +619,14 @@ Show that strict inequality is transitive. Use a direct proof. (A later
 exercise exploits the relation between < and ≤.)
 
 ```agda
--- Your code goes here
+<-trans : ∀ {m n p : ℕ}
+  → m < n
+  → n < p
+    -------------
+  → m < p
+-- Agda infer a goal 'zero < p' from context 'suc n < p'
+<-trans z<s (s<s _) = z<s  
+<-trans (s<s m<n) (s<s n<p) = s<s (<-trans m<n n<p)
 ```
 
 #### Exercise `trichotomy` (practice) {#trichotomy}
@@ -618,7 +644,30 @@ similar to that used for totality.
 [negation](/Negation/).)
 
 ```agda
--- Your code goes here
+data Trichotomy : ℕ → ℕ → Set where
+  less : ∀ {m n : ℕ}
+    → m < n
+      ------------
+    → Trichotomy m n
+
+  equal : ∀ {m n : ℕ}
+    → m ≡ n
+      ------------
+    → Trichotomy m n
+
+  greater : ∀ {m n : ℕ}
+    → n < m
+      ------------
+    → Trichotomy m n
+  
+<-trichotomy : ∀ (m n : ℕ) → Trichotomy m n
+<-trichotomy zero zero = equal refl
+<-trichotomy zero (suc n) = less z<s
+<-trichotomy (suc m) zero = greater z<s
+<-trichotomy (suc m) (suc n) with <-trichotomy m n
+...              | less m<n = less (s<s m<n)
+...              | equal m≡n = equal (cong suc m≡n)
+...              | greater n<m = greater (s<s n<m)
 ```
 
 #### Exercise `+-mono-<` (practice) {#plus-mono-less}
@@ -627,7 +676,25 @@ Show that addition is monotonic with respect to strict inequality.
 As with inequality, some additional definitions may be required.
 
 ```agda
--- Your code goes here
++-monoʳ-< : ∀ (n p q : ℕ)
+  → p < q
+    -------------
+  → n + p < n + q
++-monoʳ-< zero p q p<q = p<q
++-monoʳ-< (suc n) p q p<q = s<s (+-monoʳ-< n p q p<q)
+
++-monoˡ-< : ∀ (m n p : ℕ)
+  → m < n
+    -------------
+  → m + p < n + p
++-monoˡ-< m n p m<n rewrite +-comm m p | +-comm n p = +-monoʳ-< p m n m<n
+
++-mono-< : ∀ (m n p q : ℕ)
+  → m < n
+  → p < q
+    -------------
+  → m + p < n + q
++-mono-< m n p q m<n p<q = <-trans (+-monoˡ-< m n p m<n) (+-monoʳ-< n p q p<q)
 ```
 
 #### Exercise `≤→<, <→≤` (recommended) {#leq-iff-less}
@@ -635,7 +702,19 @@ As with inequality, some additional definitions may be required.
 Show that `suc m ≤ n` implies `m < n`, and conversely.
 
 ```agda
--- Your code goes here
+≤→< : ∀ {m n : ℕ}
+  → suc m ≤ n
+    -------------
+  → m < n
+≤→< {zero} {suc n} _ = z<s
+≤→< {suc m} {n} (s≤s sm≤n)= s<s (≤→< sm≤n)
+
+<→≤ : ∀ {m n : ℕ}
+  → m < n
+    -------------
+  → suc m ≤ n
+<→≤ z<s = s≤s z≤n
+<→≤ (s<s m<n) = s≤s (<→≤ m<n)
 ```
 
 #### Exercise `<-trans-revisited` (practice) {#less-trans-revisited}
@@ -645,7 +724,16 @@ using the relation between strict inequality and inequality and
 the fact that inequality is transitive.
 
 ```agda
--- Your code goes here
+n≤sn : ∀ {n : ℕ} → n ≤ suc n
+n≤sn {zero} = z≤n
+n≤sn {suc n} = s≤s (n≤sn)
+
+<-trans-revisited : ∀ {m n p : ℕ}
+  → m < n
+  → n < p
+    ------------
+  → m < p
+<-trans-revisited m<n n<p = ≤→< (≤-trans (≤-trans (<→≤ m<n) n≤sn) (<→≤ n<p))
 ```
 
 
@@ -752,7 +840,22 @@ successor of the sum of two even numbers, which is even.
 Show that the sum of two odd numbers is even.
 
 ```agda
--- Your code goes here
+e+o≡o : ∀ {m n : ℕ}
+  → even m
+  → odd n
+    ------------
+  → odd (m + n)
+
+o+o≡e : ∀ {m n : ℕ}
+  → odd m
+  → odd n
+    ------------
+  → even (m + n)
+
+e+o≡o zero on = on
+e+o≡o (suc em) on = suc (o+o≡e em on)
+
+o+o≡e (suc em) on = suc ((e+o≡o em on))
 ```
 
 #### Exercise `Bin-predicates` (stretch) {#Bin-predicates}
@@ -812,7 +915,91 @@ properties of `One`. It may also help to prove the following:
     to (2 * n) ≡ (to n) O
 
 ```agda
--- Your code goes here
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (b O) = b I
+inc (b I) = inc (b) O
+
+-- binary representation has leading one.
+data One : Bin → Set where
+  o1 : One (⟨⟩ I)
+  o10 : ∀ {b : Bin} → One b → One (b O)
+  o11 : ∀ {b : Bin} → One b → One (b I)
+
+-- canonical bianry representation.
+data Can : Bin → Set where
+  cz : Can (⟨⟩ O)
+  c1b : ∀ {b : Bin} → One b → Can b
+
+
+one-inc-preserves : ∀ {b : Bin}
+  → One b
+    ------------
+  → One (inc b)
+one-inc-preserves o1 = o10 o1
+one-inc-preserves (o10 ob) = o11 ob
+one-inc-preserves (o11 ob) = o10 (one-inc-preserves ob)
+
+can-inc-preserves : ∀ {b : Bin}
+  → Can b
+    ------------
+  → Can (inc b)
+can-inc-preserves cz = c1b o1
+can-inc-preserves (c1b o1) = c1b (o10 o1)
+can-inc-preserves (c1b (o10 ox)) = c1b (o11 ox)
+can-inc-preserves (c1b (o11 ox)) = c1b (o10 (one-inc-preserves ox))
+
+to : ℕ → Bin
+to zero = ⟨⟩ O
+to (suc n) = inc (to n)
+
+-- to n is canonical.
+can-to : ∀ (n : ℕ) → Can (to n)
+can-to zero = cz
+can-to (suc n) = can-inc-preserves (can-to n)
+
+from : Bin → ℕ
+from ⟨⟩ = 0
+from (b O) = 2 * from (b)
+from (b I) = 1 + (2 * from (b))
+
+
+n≤m-n≤m+p : ∀ {n m p : ℕ} → n ≤ m → n ≤ m + p
+n≤m-n≤m+p z≤n = z≤n
+n≤m-n≤m+p (s≤s n≤m) = s≤s (n≤m-n≤m+p n≤m)
+
+1≤from : ∀ {b : Bin}
+  → One b
+    ------------
+  → 1 ≤ from b
+1≤from o1 = ≤-refl
+1≤from {b O} (o10 ob) =  n≤m-n≤m+p (1≤from ob)
+1≤from {b} (o11 ob) = s≤s z≤n
+
+-- inc-inc=inc-O : ∀ (b : Bin)
+--     ------------
+--   → inc (inc (b O)) ≡ (inc b) O
+-- inc-inc=inc-O ⟨⟩ = refl
+-- inc-inc=inc-O (b O) = refl
+-- inc-inc=inc-O (b I) = refl
+
+-- to-n⋆2=to-nO : ∀ (n : ℕ) → 1 ≤ n → to (n * 2) ≡ (to n) O
+-- to-n⋆2=to-nO (suc zero) _ =  refl
+-- to-n⋆2=to-nO (suc n) 1≤n rewrite +-identityʳ n = {! inc-inc=inc-O (to-n⋆2=to-nO n)  !}
+
+-- to-from : ∀ {b : Bin}
+--   → Can b
+--     ---------------
+--   → to (from b) ≡ b
+-- to-from cz = refl
+-- to-from (c1b o1) = refl
+-- to-from (c1b (o10 cb)) = {!   !}
+-- to-from (c1b (o11 cb)) = {!   !}
 ```
 
 ## Standard library

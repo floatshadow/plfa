@@ -290,7 +290,7 @@ definition for `trans`. Can you see why? (Hint: look at the definition
 of `_≡⟨_⟩_`)
 
 ```agda
--- Your code goes here
+-- Proving trans using ≡-Reasoning is circular
 ```
 
 ## Chains of equations, another example
@@ -378,7 +378,105 @@ it to write out an alternative proof that addition is monotonic with
 regard to inequality.  Rewrite all of `+-monoˡ-≤`, `+-monoʳ-≤`, and `+-mono-≤`.
 
 ```agda
--- Your code goes here
+-- Less than or equal
+data _≤_ : ℕ → ℕ → Set where
+
+  z≤n : ∀ {n : ℕ}
+      --------
+    → zero ≤ n
+
+  s≤s : ∀ {m n : ℕ}
+    → m ≤ n
+      -------------
+    → suc m ≤ suc n
+
+module ≤-Reasoning where
+
+  infix  1 ≤-begin_
+  infixr 2 ≤-step-≡-∣ ≤-step-≡-⟩
+  infix  3 _≤-∎
+
+  ≤-begin_ : ∀ {x y : ℕ} → x ≤ y → x ≤ y
+  ≤-begin m≤n = m≤n
+
+  ≤-step-≡-∣ : ∀ (x : ℕ) {y : ℕ} → x ≤ y → x ≤ y
+  ≤-step-≡-∣ x x≤y  =  x≤y
+
+  ≤-step-≡-⟩ : ∀ (x : ℕ) {y z : ℕ} → y ≤ z → x ≤ y → x ≤ z
+  ≤-step-≡-⟩ zero y≤z x≤y  =  z≤n
+  ≤-step-≡-⟩ (suc n) (s≤s y≤z) (s≤s x≤y)  =  s≤s ( ≤-step-≡-⟩ n y≤z x≤y)
+
+  syntax ≤-step-≡-∣ x x≤y      =  x ≤-≡⟨⟩ x≤y
+  syntax ≤-step-≡-⟩ x y≤z x≤y  =  x ≤-≡⟨  x≤y ⟩ y≤z
+
+  _≤-∎ : ∀ (x : ℕ) → x ≤ x
+  zero ≤-∎  =  z≤n
+  (suc n) ≤-∎  =  s≤s ((n ≤-∎))
+
+open ≤-Reasoning
+
+infixl 6 _+_
+infix 5 _≤_
+
++-monoʳ-≤ : ∀ (n p q : ℕ)
+  → p ≤ q
+    -------------
+  → n + p ≤ n + q
++-monoʳ-≤ zero p q p≤q =
+  ≤-begin
+    zero + p
+  ≤-≡⟨ p≤q ⟩
+    zero + q
+  ≤-∎
++-monoʳ-≤ (suc n) p q p≤q = 
+  ≤-begin
+    suc n + p
+  ≤-≡⟨⟩
+    suc (n + p)
+  ≤-≡⟨ s≤s (+-monoʳ-≤ n p q p≤q) ⟩
+    suc (n + q)
+  ≤-≡⟨⟩
+    suc n + q
+  ≤-∎
+
+≤-≡ : ∀ {x y} → x ≡ y → x ≤ y
+≤-≡ refl = _ ≤-∎
+
++-monoˡ-≤ : ∀ (m n p : ℕ)
+  → m ≤ n
+    -------------
+  → m + p ≤ n + p
++-monoˡ-≤ m n p m≤n =
+  ≤-begin
+    m + p
+  ≤-≡⟨ ≤-≡ (+-comm m p) ⟩
+    p + m
+  ≤-≡⟨ +-monoʳ-≤ p m n m≤n ⟩
+    p + n
+  ≤-≡⟨ ≤-≡ (+-comm p n) ⟩
+    n + p
+  ≤-∎
+
+postulate
+  ≤-trans : ∀ {m n p : ℕ}
+    → m ≤ n
+    → n ≤ p
+      -----
+    → m ≤ p
+
++-mono-≤ : ∀ (m n p q : ℕ)
+  → m ≤ n
+  → p ≤ q
+    -------------
+  → m + p ≤ n + q
++-mono-≤ m n p q m≤n p≤q =
+  ≤-begin
+    m + p
+  ≤-≡⟨ +-monoˡ-≤ m n p m≤n ⟩
+    n + p
+  ≤-≡⟨ +-monoʳ-≤ n p q p≤q ⟩
+    n + q
+  ≤-∎
 ```
 
 
