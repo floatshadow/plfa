@@ -14,6 +14,7 @@ This chapter introduces universal and existential quantification.
 ```agda
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl)
+open Eq.≡-Reasoning
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_)
 open import Relation.Nullary using (¬_)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
@@ -90,22 +91,46 @@ dependent product is ambiguous.
 
 Show that universals distribute over conjunction:
 ```agda
-postulate
-  ∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× : ∀ {A : Set} {B C : A → Set} →
+  (∀ (x : A) → B x × C x) ≃ (∀ (x : A) → B x) × (∀ (x : A) → C x)
+∀-distrib-× =
+  record
+    { to      = λ{ x→Bx×Cx → ⟨ (λ{ x → proj₁ (x→Bx×Cx x) }) , (λ{ x → proj₂ (x→Bx×Cx x) }) ⟩ }
+    ; from    = λ{ ⟨ x→Bx , x→Cx ⟩ → λ{ x → ⟨ x→Bx x , x→Cx x ⟩ } }
+    ; from∘to = λ{ x→Bx×Cx → refl  }
+    ; to∘from = λ{ ⟨ x→Bx , x→Cx ⟩ → refl }
+    }
 ```
 Compare this with the result (`→-distrib-×`) in
 Chapter [Connectives](/Connectives/).
+
+```agda
+-- dependent function (∀ or Π) corresponds to function (→)
+→-distrib-× : ∀ {A B C : Set} → (A → B × C) ≃ (A → B) × (A → C)
+→-distrib-× =
+  record
+    { to      = λ{ f → ⟨ proj₁ ∘ f , proj₂ ∘ f ⟩ }
+    ; from    = λ{ ⟨ g , h ⟩ → λ x → ⟨ g x , h x ⟩ }
+    ; from∘to = λ{ f → refl }
+    ; to∘from = λ{ ⟨ g , h ⟩ → refl }
+    }
+```
 
 #### Exercise `⊎∀-implies-∀⊎` (practice)
 
 Show that a disjunction of universals implies a universal of disjunctions:
 ```agda
-postulate
-  ⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set} →
-    (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x) → ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ : ∀ {A : Set} {B C : A → Set} →
+  (∀ (x : A) → B x) ⊎ (∀ (x : A) → C x) → ∀ (x : A) → B x ⊎ C x
+⊎∀-implies-∀⊎ (inj₁ x→Bx) = λ{x → inj₁ (x→Bx x)}
+⊎∀-implies-∀⊎ (inj₂ x→Cx) = λ{x → inj₂ (x→Cx x)}
 ```
 Does the converse hold? If so, prove; if not, explain why.
+```agda
+-- The conversion does not hold. Given `∀ (x : A) → B x ⊎ C x`,
+-- for domain `x₁, x₂, ...`, we may have `B x₁` and `C x₂`, but not
+-- `B x₁, B x₂, ...` or `C x₁, C x₂, ...`.
+```
 
 
 #### Exercise `∀-×` (practice)
@@ -121,7 +146,20 @@ Let `B` be a type indexed by `Tri`, that is `B : Tri → Set`.
 Show that `∀ (x : Tri) → B x` is isomorphic to `B aa × B bb × B cc`.
 
 Hint: you will need to use [`∀-extensionality`](/Isomorphism/#extensionality).
-
+```agda
+-- ∀-extensionality : ∀ {A : Set} {B : A → Set} {f g : ∀(x : A) → B x}
+--   → (∀ (x : A) → f x ≡ g x)
+--     -----------------------
+--   → f ≡ g
+∀≃× : ∀ { B : Tri → Set } → (∀ (x : Tri) → B x) ≃ B aa × B bb × B cc
+∀≃× =
+  record
+    { to      = λ{ x→Bx → ⟨ x→Bx aa , ⟨ x→Bx bb , x→Bx cc ⟩ ⟩ } 
+    ; from    = λ{ ⟨ Baa , ⟨ Bbb , Bcc ⟩ ⟩ → λ{ aa → Baa ; bb → Bbb ; cc → Bcc } }
+    ; from∘to = λ{ x→Bx → ∀-extensionality λ{ aa → refl ; bb → refl ; cc → refl } }
+    ; to∘from = λ{ _ → refl }
+    }
+```
 
 ## Existentials
 
@@ -260,31 +298,78 @@ Indeed, the converse also holds, and the two together form an isomorphism:
 The result can be viewed as a generalisation of currying.  Indeed, the code to
 establish the isomorphism is identical to what we wrote when discussing
 [implication](/Connectives/#implication).
+```agda
+currying : ∀ {A B C : Set} → (A → B → C) ≃ (A × B → C)
+currying =
+  record
+    { to      =  λ{ f → λ{ ⟨ x , y ⟩ → f x y }}
+    ; from    =  λ{ g → λ{ x → λ{ y → g ⟨ x , y ⟩ }}}
+    ; from∘to =  λ{ f → refl }
+    ; to∘from =  λ{ g → refl }
+    }
+```
 
 #### Exercise `∃-distrib-⊎` (recommended)
 
 Show that existentials distribute over disjunction:
 ```agda
-postulate
-  ∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
-    ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ : ∀ {A : Set} {B C : A → Set} →
+  ∃[ x ] (B x ⊎ C x) ≃ (∃[ x ] B x) ⊎ (∃[ x ] C x)
+∃-distrib-⊎ =
+  record
+    { to      = λ{ ⟨ x , inj₁ Bx ⟩ → inj₁ ⟨ x , Bx ⟩ ; ⟨ x , inj₂ Cx ⟩ → inj₂ ⟨ x , Cx ⟩  }
+    ; from    = λ{ (inj₁ ⟨ x , Bx ⟩) → ⟨ x , inj₁ Bx ⟩
+                 ; (inj₂ ⟨ x , Cx ⟩) → ⟨ x , inj₂ Cx ⟩
+                 }
+    ; from∘to = λ{ ⟨ x , inj₁ Bx ⟩ → refl ; ⟨ x , inj₂ Cx ⟩ → refl }
+    ; to∘from = λ{ (inj₁ ⟨ x , Bx ⟩) →  refl ; (inj₂ ⟨ x , Cx ⟩) → refl }
+    }
 ```
 
 #### Exercise `∃×-implies-×∃` (practice)
 
 Show that an existential of conjunctions implies a conjunction of existentials:
 ```agda
-postulate
-  ∃×-implies-×∃ : ∀ {A : Set} {B C : A → Set} →
-    ∃[ x ] (B x × C x) → (∃[ x ] B x) × (∃[ x ] C x)
+∃×-implies-×∃ : ∀ {A : Set} {B C : A → Set} →
+  ∃[ x ] (B x × C x) → (∃[ x ] B x) × (∃[ x ] C x)
+∃×-implies-×∃ ⟨ x , ⟨ Bx , Cx ⟩ ⟩ = ⟨ ⟨ x , Bx ⟩ , ⟨ x , Cx ⟩ ⟩
 ```
 Does the converse hold? If so, prove; if not, explain why.
+```agda
+-- The conversion does not hold. Given `∃[ x ] B x` and `∃[ x ] C x`,
+-- we may have `B x₁` and `C x₂`, but not `B x₁ × C x₁` or `B x₂ × C x₂`.
+```
 
 #### Exercise `∃-⊎` (practice)
 
 Let `Tri` and `B` be as in Exercise `∀-×`.
 Show that `∃[ x ] B x` is isomorphic to `B aa ⊎ B bb ⊎ B cc`.
-
+```agda
+-- ∀-extensionality : ∀ {A : Set} {B : A → Set} {f g : ∀(x : A) → B x}
+--   → (∀ (x : A) → f x ≡ g x)
+--     -----------------------
+--   → f ≡ g
+∃≃× : ∀ { B : Tri → Set } → (∃[ x ] B x) ≃ (B aa ⊎ B bb ⊎ B cc)
+∃≃× =
+  record
+    { to      = λ{ ⟨ aa , Baa ⟩ → inj₁ Baa
+                 ; ⟨ bb , Bbb ⟩ → inj₂ (inj₁ Bbb)
+                 ; ⟨ cc , Bcc ⟩ → inj₂ (inj₂ Bcc)
+                 }
+    ; from    = λ{ (inj₁ Baa) → ⟨ aa , Baa ⟩
+                 ; (inj₂ (inj₁ Bbb)) → ⟨ bb , Bbb ⟩
+                 ; (inj₂ (inj₂ Bcc)) → ⟨ cc , Bcc ⟩
+                 }
+    ; from∘to = λ{ ⟨ aa , Baa ⟩ → refl
+                 ; ⟨ bb , Bbb ⟩ → refl
+                 ; ⟨ cc , Bcc ⟩ → refl
+                 }
+    ; to∘from = λ{ (inj₁ Baa) → refl
+                 ; (inj₂ (inj₁ Bbb)) → refl
+                 ; (inj₂ (inj₂ Bcc)) → refl
+                 }
+    }
+```
 
 ## An existential example
 
@@ -394,7 +479,13 @@ by `2 * m` and `2 * m + 1`?  Rewrite the proofs of `∃-even` and `∃-odd` when
 restated in this way.
 
 ```agda
--- Your code goes here
+-- open import Data.Nat.Properties using (+-assoc; *-assoc)
+
+-- ∃-even′ : ∀ {n : ℕ} → ∃[ m ] (2 * m     ≡ n) → even n
+-- ∃-odd′  : ∀ {n : ℕ} → ∃[ m ] (2 * m + 1 ≡ n) →  odd n
+
+-- ∃-even′ ⟨  zero , refl ⟩  =  even-zero
+-- ∃-even′ ⟨ suc m , refl ⟩  =  even-suc (∃-odd′ ⟨ m , refl ⟩)
 ```
 
 #### Exercise `∃-+-≤` (practice)

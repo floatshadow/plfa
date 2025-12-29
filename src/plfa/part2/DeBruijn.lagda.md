@@ -468,6 +468,10 @@ First, computing two plus two on naturals:
 two : ∀ {Γ} → Γ ⊢ `ℕ
 two = `suc `suc `zero
 
+-- plus = μ "+" ⇒ ƛ "m" ⇒ ƛ "n" ⇒
+--          case ` "m" (Γ, "+", "m", "n") 
+--            [zero⇒ ` "n" (Γ, "+", "m", "n") 
+--            |suc "m" ⇒ `suc (` "+" · ` "m" · ` "n") ] (Γ, "+", "m", "n", "m") 
 plus : ∀ {Γ} → Γ ⊢ `ℕ ⇒ `ℕ ⇒ `ℕ
 plus = μ ƛ ƛ (case (# 1) (# 0) (`suc (# 3 · # 0 · # 1)))
 
@@ -485,6 +489,8 @@ Ch A  =  (A ⇒ A) ⇒ A ⇒ A
 twoᶜ : ∀ {Γ A} → Γ ⊢ Ch A
 twoᶜ = ƛ ƛ (# 1 · (# 1 · # 0))
 
+-- plusᶜ =  ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒
+--          ` "m" · ` "s" · (` "n" · ` "s" · ` "z")
 plusᶜ : ∀ {Γ A} → Γ ⊢ Ch A ⇒ Ch A ⇒ Ch A
 plusᶜ = ƛ ƛ ƛ ƛ (# 3 · # 1 · (# 2 · # 1 · # 0))
 
@@ -507,7 +513,18 @@ two natural numbers, now adapted to the intrinsically-typed
 de Bruijn representation.
 
 ```agda
--- Your code goes here
+-- mul = μ "*" ⇒ ƛ "m" ⇒ ƛ "n" ⇒
+--         case ` "m"
+--           [zero⇒ `zero
+--           |suc "m"⇒ ` "plus" · ` "n" · (` "*" · ` "m" · ` "n") ]
+mul : ∀ {Γ} → Γ ⊢ `ℕ ⇒ `ℕ ⇒ `ℕ
+mul = μ ƛ ƛ (case (# 1) (# 0) (plus · # 1 · (# 3 · # 0 · # 1)))
+
+-- mulᶜ = ƛ "m" ⇒ ƛ "n" ⇒ ƛ "s" ⇒ ƛ "z" ⇒
+--         ` "m" · (` "n" · ` "s") · ` "z"
+-- Γ, m : Ch A, n : Ch A, s : A ⇒ A, z : A ⊢ 
+mulᶜ : ∀ {Γ A} → Γ ⊢ Ch A ⇒ Ch A ⇒ Ch A
+mulᶜ = ƛ ƛ ƛ ƛ (# 3 · (# 2 · # 1) · # 0)
 ```
 
 
@@ -594,6 +611,9 @@ M₀ = ƛ (# 1 · (# 1 · # 0))
 M₁ : ∅ , `ℕ ⇒ `ℕ , `ℕ ⊢ `ℕ ⇒ `ℕ
 M₁ = ƛ (# 2 · (# 2 · # 0))
 
+-- Γ = ∅ , `ℕ ⇒ `ℕ
+-- A = `ℕ ⇒ `ℕ
+-- Γ ⊢ A  →  Γ , `ℕ ⊢ A
 _ : rename S_ M₀ ≡ M₁
 _ = refl
 ```
@@ -635,6 +655,11 @@ Given a map from variables in one context to terms over
 another, extension yields a map from the first context
 extended to the second context similarly extended:
 ```agda
+-- Compare to variable mapping in the renaming lemma:
+-- ext : ∀ {Γ Δ}
+--   → (∀ {A} →       Γ ∋ A →     Δ ∋ A)
+--     ---------------------------------
+--   → (∀ {A B} → Γ , B ∋ A → Δ , B ∋ A)
 exts : ∀ {Γ Δ}
   → (∀ {A} →       Γ ∋ A →     Δ ⊢ A)
     ---------------------------------
@@ -663,6 +688,9 @@ to define substitution.  If variables in one context map
 to terms over another, then terms in the first context
 map to terms in the second:
 ```agda
+-- Whereas renaming concerned a map from variables
+-- in one context to variables in another, substitution takes a
+-- map from variables in one context to _terms_ in another.
 subst : ∀ {Γ Δ}
   → (∀ {A} → Γ ∋ A → Δ ⊢ A)
     -----------------------
@@ -697,6 +725,15 @@ From the general case of substitution for multiple free
 variables it is easy to define the special case of
 substitution for one free variable:
 ```agda
+-- Simultaneous substitution is a map from variables in one context
+-- to terms over another.
+-- subst : ∀ {Γ Δ}
+-- → (∀ {A} → Γ ∋ A → Δ ⊢ A)
+--   -----------------------
+-- → (∀ {A} → Γ ⊢ A → Δ ⊢ A)
+-- We can define a special case of substitution for one free variable:
+-- Γ = Γ , B
+-- Δ = Γ 
 _[_] : ∀ {Γ A B}
   → Γ , B ⊢ A
   → Γ ⊢ B
@@ -705,8 +742,8 @@ _[_] : ∀ {Γ A B}
 _[_] {Γ} {A} {B} N M =  subst {Γ , B} {Γ} σ {A} N
   where
   σ : ∀ {A} → Γ , B ∋ A → Γ ⊢ A
-  σ Z      =  M
-  σ (S x)  =  ` x
+  σ Z      =  M   -- map the last free variable `B` in `Γ , B` to term `M` under context `Γ`;
+  σ (S x)  =  ` x -- otherwise, map the free variable `A` in `Γ , B` to itself, shifted by `S`.
 ```
 In a term of type `A` over context `Γ , B`, we replace the
 variable of type `B` by a term of type `B` over context `Γ`.
